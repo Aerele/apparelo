@@ -12,13 +12,6 @@ frappe.query_reports["Cutting Report"] = {
 			"reqd": 1
 		},
 		{
-			"fieldname":"part",
-			"label": __("Part"),
-			"fieldtype": "Link",
-			"options": "Apparelo Part",
-			"reqd": 1
-		},
-		{
 			"fieldname":"show_planned_qty",
 			"label": __("Show Planned Qty"),
 			"fieldtype": "Check",
