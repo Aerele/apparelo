@@ -13,33 +13,33 @@ from operator import itemgetter
 def execute(filters=None):
 	columns, data = [], []
 	if filters:
-		columns, size_list = get_columns(filters, columns)
-		data = get_data(filters, data, size_list)
+		columns, size_len = get_columns(filters, columns)
+		data = get_data(filters, columns, size_len)
 	return columns, data
 
 def get_columns(filters, columns):
-	size_list = []
-	columns += [
-			_('Part') + ":Data:100",
-			_('Colour') + ":Data:100"
-		]
 	ipd = frappe.db.get_value('Lot Creation',filters['lot'], 'item_production_detail')
 	ipd_doc = frappe.get_doc('Item Production Detail', ipd)
-	for row in ipd_doc.size:
-		columns += [
-			_(row.size) + ":Data:100"
-		]
-		size_list.append(row.size)
-	return columns, size_list
-
-def get_data(filters, data, size_list):
 	if 'show_planned_qty' in filters and filters['show_planned_qty']:
-		data = show_planned_qty(filters, len(size_list))
+		columns += [
+				_('Part') + ":Data:100",
+				_('Colour') + ":Data:100"
+			]
+		for row in ipd_doc.size:
+			columns += [
+				_(row.size) + ":Data:100"
+			]
+	return columns, len(ipd_doc.size)
 
+def get_data(filters, columns, size_len):
+	if 'show_planned_qty' in filters and filters['show_planned_qty']:
+		data = show_planned_qty(filters, size_len, 'Cutting')
+	else:
+		data = piece_wise_qty(filters, columns, size_len)
 	return data
 
 
-def show_planned_qty(filters, size_len):
+def show_planned_qty(filters, size_len, process):
 	lot = filters['lot']
 	lot_ipd = frappe.db.get_value(
 		'Lot Creation', {'name': lot}, 'item_production_detail')
@@ -49,13 +49,13 @@ def show_planned_qty(filters, size_len):
 	ipd_item_mapping = frappe.get_doc(
 		"IPD Item Mapping", {'item_production_details': lot_ipd})
 	boms = frappe.get_doc(
-		'IPD BOM Mapping', ipd_bom_mapping).get_process_boms('Cutting')
+		'IPD BOM Mapping', ipd_bom_mapping).get_process_boms(process)
 	data = frappe.get_list('BOM', filters={'name': ['in', boms]},
 					group_by='item', fields=['item', 'name as bom'])
 
 	receivable_list = {}
 	item_mapping_validator = [x["item"] for x in frappe.get_list(
-		"Item Mapping", {"parent": ipd_item_mapping.name, "process_1": 'Cutting'}, "item")]
+		"Item Mapping", {"parent": ipd_item_mapping.name, "process_1": process}, "item")]
 	data_with_removed_invalids_list = []
 	for item in data:
 		if item['item'] in item_mapping_validator:
@@ -93,11 +93,14 @@ def show_planned_qty(filters, size_len):
 		
 		new_data.append({
 			'colour': attribute_set['Apparelo Colour'][0],
-			'part': attribute_set['Part'][0],
-			attribute_set['Apparelo Size'][0].lower().replace(' ','_'): d['qty']
+			'part': attribute_set['Part'][0] if 'Part' in attribute_set else '',
+			attribute_set['Apparelo Size'][0].lower().replace(' ','_'): d['qty'],
+			'size': attribute_set['Apparelo Size'][0]
 		})
-
-	new_data = sorted(new_data, key=itemgetter('part', 'colour'))
+	
+	new_data = sorted(new_data, key=itemgetter('part', 'colour', 'size'))
+	if process == 'Stitching':
+		return new_data
 	combined_data = []
 	for out_idx in range(0,len(new_data), size_len):
 		combined_dict = new_data[out_idx]
@@ -106,3 +109,38 @@ def show_planned_qty(filters, size_len):
 		combined_data.append(combined_dict)
 
 	return combined_data
+
+def piece_wise_qty(filters, columns, size_len):
+	columns += [
+			_('Size') + ":Data:100"
+		]
+	lot = filters['lot']
+	lot_ipd = frappe.db.get_value(
+		'Lot Creation', {'name': lot}, 'item_production_detail')
+
+	ipd_doc = frappe.get_doc('Item Production Detail', lot_ipd)
+	data = show_planned_qty(filters, size_len, 'Stitching')
+	stitching_record = []
+	for row in ipd_doc.processes:
+		if row.process_name == 'Stitching':
+			stitching_record.append(row.process_record)
+
+	for d in data:
+		parent = frappe.db.get_value('Stitching Colour Mapping', {'parent': ['in', stitching_record], 'piece_colour': d['colour']}, 'parent')
+		parts_per_piece_records = frappe.db.get_list('Stitching Parts Per Piece', {'parent':parent})
+		for record in parts_per_piece_records:
+			values = frappe.db.get_values("Stitching Parts Per Piece", record, 
+				["part", "qty"], as_dict=1)[0]
+			if not _(values.part) + ":Data:100" in columns:
+				columns +=[_(values.part) + ":Data:100"]
+			d[values.part.lower().replace(' ','_')] = values.qty * (d[d['size'].lower().replace(' ','_')])
+		del d['colour']
+		del d['part']
+		del d[d['size'].lower().replace(' ','_')]
+
+	final_data = [] 
+	for i in range(len(data)):
+		if data[i] not in data[i + 1:]: 
+			final_data.append(data[i])
+
+	return final_data
