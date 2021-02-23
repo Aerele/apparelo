@@ -127,7 +127,7 @@ class DC(Document):
 				frappe.throw(_(f'Item {item_name} entered in delivery items at row {idx} was not found in purchase order supplied items'))
 			else:
 				transfer_qty = round(supplied_items[item_name],3)
-				if not transfer_qty == flt(qty):
+				if not (transfer_qty - flt(qty) <= 0.001):
 					frappe.throw(_(f'Item {item_name} of qty {flt(qty)} entered in delivery items at row {idx} was mismatched with PO supplied items of qty {transfer_qty}'))
 			supplied_items.pop(item_name)
 		if supplied_items:
