@@ -20,6 +20,12 @@
   "from_field",
   "to_field",
   "copy_over",
+  "section_break_15",
+  "attribute",
+  "total_quantity_delivered",
+  "divide_total_quantity",
+  "column_break_19",
+  "attribute_value",
   "section_break_13",
   "items",
   "delete_unavailable_delivery_items",
@@ -41,7 +47,7 @@
   "company",
   "company_address_name",
   "company_address",
-  "section_break_15",
+  "section_break_42",
   "dc_cloth_quantity",
   "amended_from"
  ],
@@ -111,6 +117,7 @@
   {
    "fieldname": "location",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Delivery Location",
    "options": "Location",
    "reqd": 1
@@ -145,6 +152,7 @@
    "label": "Printable Section"
   },
   {
+   "depends_on": "eval:doc.select_helper=='Divide Total Quantity' && doc.docstatus == 0",
    "fieldname": "section_break_15",
    "fieldtype": "Section Break"
   },
@@ -269,12 +277,41 @@
    "label": "Entry Table",
    "options": "\nDelivery Items\nReturn Materials",
    "reqd": 1
+  },
+  {
+   "fieldname": "attribute",
+   "fieldtype": "Link",
+   "label": "Attribute",
+   "options": "Item Attribute"
+  },
+  {
+   "fieldname": "divide_total_quantity",
+   "fieldtype": "Button",
+   "label": "Divide Total Quantity"
+  },
+  {
+   "fieldname": "column_break_19",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "attribute_value",
+   "fieldtype": "Select",
+   "label": "Attribute Value"
+  },
+  {
+   "fieldname": "section_break_42",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "total_quantity_delivered",
+   "fieldtype": "Float",
+   "label": "Total Quantity Delivered"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2021-02-22 07:05:20.491155",
+ "modified": "2021-02-24 08:25:59.539700",
  "modified_by": "Administrator",
  "module": "Apparelo",
  "name": "DC",

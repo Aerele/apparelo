@@ -52,7 +52,6 @@
   {
    "fieldname": "lot",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "label": "Lot",
    "options": "Lot Creation",
    "reqd": 1
@@ -106,6 +105,7 @@
   {
    "fieldname": "location",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Location",
    "options": "Location",
    "reqd": 1
@@ -236,7 +236,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2021-02-19 16:04:44.169024",
+ "modified": "2021-02-24 07:47:29.514587",
  "modified_by": "Administrator",
  "module": "Apparelo",
  "name": "GRN",

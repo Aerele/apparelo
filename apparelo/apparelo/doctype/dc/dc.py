@@ -326,13 +326,10 @@ def get_supplier_based_address(supplier):
 
 @frappe.whitelist()
 def get_supplier(doctype, txt, searchfield, start, page_len, filters):
+	supplier_list = frappe.get_all('Supplier_Process', {'processes': filters['supplier_process.processes']}, 'parent')
 	suppliers = []
-	all_supplier = frappe.db.get_all("Supplier")
-	for supplier in all_supplier:
-		process_supplier = frappe.get_doc("Supplier", supplier.name)
-		for process in process_supplier.supplier_process:
-			if process.processes == filters['supplier_process.processes']:
-				suppliers.append([supplier.name])
+	for supplier in supplier_list:
+		suppliers.append([supplier['parent']])
 	return suppliers
 
 def make_item_fields(update=True):
@@ -810,3 +807,35 @@ def make_grn(source_name, target_doc=None):
 			}
 		}, target_doc)
 	return doc
+
+@frappe.whitelist()
+def divide_total_quantity(doc):
+	dc_item = []
+	total_qty = 0
+	matching_item_list = []
+	if isinstance(doc, string_types):
+		doc = frappe._dict(json.loads(doc))
+	attribute = doc.get('attribute')
+	attribute_value = doc.get('attribute_value')
+	total_delivered_qty = doc.get('total_quantity_delivered')
+	if total_delivered_qty:
+		for row in doc['items']:
+			item_doc = frappe.get_doc("Item",row['item_code'])
+			attribute_set = get_item_attribute_set(list(map(lambda x: x.attributes,[item_doc])))
+			if attribute_set[attribute][0] == attribute_value:
+				total_qty += row['available_quantity']
+				matching_item_list.append(row['item_code'])
+		for row in doc['items']:
+			if row['item_code'] in matching_item_list:
+				if total_delivered_qty>total_qty:
+					remaining_qty = total_delivered_qty - total_qty
+					row['quantity'] = row['available_quantity'] + (remaining_qty/total_qty)*row['available_quantity']
+				else:
+					row['quantity'] = (total_delivered_qty/total_qty)*row['available_quantity']
+				dc_item.append({"item_code":row['item_code'],"primary_uom":row['primary_uom'],"available_quantity":row['available_quantity'],"pf_item_code":row['pf_item_code'],"secondary_uom":row['secondary_uom'],"quantity":row['quantity']})
+			else:
+				if 'quantity' in row:
+					dc_item.append({"item_code":row['item_code'],"primary_uom":row['primary_uom'],"available_quantity":row['available_quantity'],"pf_item_code":row['pf_item_code'],"secondary_uom":row['secondary_uom'],"quantity":row['quantity']})
+				else:
+					dc_item.append({"item_code":row['item_code'],"primary_uom":row['primary_uom'],"available_quantity":row['available_quantity'],"pf_item_code":row['pf_item_code'],"secondary_uom":row['secondary_uom']})
+	return dc_item

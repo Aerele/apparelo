@@ -24,7 +24,7 @@ frappe.ui.form.on('DC', {
 				frm.set_value("company_address_name",data[0].name);
 			}
 		})
-		frm.set_df_property("select_helper","options",['','Copy Over'].join('\n'))
+		frm.set_df_property("select_helper","options",['','Copy Over', 'Divide Total Quantity'].join('\n'))
 		frm.set_df_property("from_field","options",['Available Qty','Delivery Qty','Secondary Qty'].join('\n'))
 		frm.set_df_property("to_field","options",['Available Qty','Delivery Qty','Secondary Qty'].join('\n'))
 		frm.set_query("supplier", function() {
@@ -73,6 +73,19 @@ frappe.ui.form.on('DC', {
 				refresh_field('items');
 			}
 		});
+	},
+	attribute: function(frm)
+	{
+		frappe.call({
+			method: "apparelo.apparelo.doctype.grn.grn.get_attribute_value",
+			freeze: true,
+			args: {attribute: frm.doc.attribute},
+			callback: function(r) {
+			  if(r.message) {
+				frm.set_df_property("attribute_value","options",r.message);
+			  }
+			}
+		  });
 	},
 	make_entry:function(frm){
 		const set_fields = ['item_code', 'uom', 'qty', 'projected_qty', 'secondary_uom', 'additional_parameters', 'pf_item_code', 'bom'];
@@ -165,6 +178,28 @@ frappe.ui.form.on('DC', {
 				refresh_field('return_materials');
 			}
 		});
+	},
+	divide_total_quantity: function(frm){
+		const set_fields = ['item_code','primary_uom','quantity','available_quantity','pf_item_code',"secondary_uom"];
+		frappe.call({
+			method: "apparelo.apparelo.doctype.dc.dc.divide_total_quantity",
+			freeze: true,
+			args: {doc: frm.doc},
+			callback: function(r) {
+				if(r.message) {
+					frm.set_value('items', []);
+					$.each(r.message, function(i, d) {
+						var item = frm.add_child('items');
+						for (let key in d) {
+							if (d[key] && in_list(set_fields, key)) {
+								item[key] = d[key];
+							}
+						}
+					});
+				}
+				refresh_field('items');
+			}
+		});	
 	},
 	get_return_item: function(frm) {
 		const set_fields = ['item_code', 'uom', 'qty', 'projected_qty', 'secondary_uom', 'additional_parameters', 'pf_item_code', 'bom'];
